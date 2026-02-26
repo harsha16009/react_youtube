@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
 import VideoCard from "./VideoCard";
 import Shimmer from "./Shimmer";
+import Sidebar from "./Sidebar";
 
 export default function Feed() {
+    const [selectedCategory, setSelectedCategory] = useState("New");
     const [videos, setVideos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        async function fetchTrendingVideos() {
+        async function fetchVideos() {
             try {
                 setError(null);
                 setLoading(true);
@@ -19,9 +21,15 @@ export default function Feed() {
                     throw new Error("YouTube API Key is missing.");
                 }
 
-                const response = await fetch(
-                    `https://www.googleapis.com/youtube/v3/videos?part=snippet&chart=mostPopular&regionCode=US&maxResults=12&key=${apiKey}`
-                );
+                let url = "";
+
+                if (selectedCategory === "Trending") {
+                    url = `https://www.googleapis.com/youtube/v3/videos?part=snippet&chart=mostPopular&regionCode=US&maxResults=12&key=${apiKey}`;
+                } else {
+                    url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${selectedCategory}&maxResults=12&type=video&key=${apiKey}`;
+                }
+
+                const response = await fetch(url);
 
                 if (!response.ok) {
                     const errorData = await response.json();
@@ -30,14 +38,18 @@ export default function Feed() {
 
                 const data = await response.json();
 
-                const formattedVideos = data.items.map((video) => ({
-                    id: video.id,
-                    title: video.snippet.title,
-                    channel: video.snippet.channelTitle,
-                    thumbnail: video.snippet.thumbnails?.high?.url || video.snippet.thumbnails?.default?.url || "",
-                }));
+                const formattedVideos = data.items.map((item) => {
+                    const id = typeof item.id === "object" ? item.id.videoId : item.id;
+                    return {
+                        id: id,
+                        title: item.snippet.title,
+                        channel: item.snippet.channelTitle,
+                        thumbnail: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.default?.url || "",
+                    };
+                });
 
-                setVideos(formattedVideos);
+                // Filter out empty IDs (channels or playlists might sometimes lack videoId)
+                setVideos(formattedVideos.filter((v) => v.id));
             } catch (err) {
                 console.error("Fetch error:", err);
                 setError(err.message);
@@ -46,22 +58,27 @@ export default function Feed() {
             }
         }
 
-        fetchTrendingVideos();
-    }, []);
-
-    if (loading) {
-        return <Shimmer />;
-    }
-
-    if (error) {
-        return <div className="text-red-500 text-center mt-4">Error: {error}</div>;
-    }
+        fetchVideos();
+    }, [selectedCategory]);
 
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
-            {videos.map((video) => (
-                <VideoCard key={video.id} video={video} />
-            ))}
+        <div className="flex flex-col md:flex-row min-h-screen">
+            <Sidebar selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} />
+            <div className="flex-1 p-4 md:p-6 lg:p-8">
+                <h2 className="text-2xl md:text-3xl font-bold mb-6 text-white">
+                    {selectedCategory} <span className="text-red-500">Videos</span>
+                </h2>
+                
+                {error && <div className="text-red-500 text-center mb-4 text-lg">Error: {error}</div>}
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {loading
+                        ? Array(12).fill(0).map((_, i) => <Shimmer key={i} />)
+                        : videos.map((video) => (
+                              <VideoCard key={video.id} video={video} />
+                          ))}
+                </div>
+            </div>
         </div>
     );
 }
