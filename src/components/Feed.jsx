@@ -8,9 +8,11 @@ export default function Feed() {
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        async function fetchVideos() {
+        async function fetchTrendingVideos() {
             try {
                 setError(null);
+                setLoading(true);
+
                 const apiKey = import.meta.env.VITE_YOUTUBE_API_KEY;
 
                 if (!apiKey) {
@@ -44,25 +46,22 @@ export default function Feed() {
             }
         }
 
-        fetchVideos();
+        fetchTrendingVideos();
     }, []);
 
+    if (loading) {
+        return <Shimmer />;
+    }
+
     if (error) {
-        return (
-            <div className="p-4 text-center">
-                <h2 className="text-red-500 text-xl font-bold">Error</h2>
-                <p className="text-gray-400">{error}</p>
-            </div>
-        );
+        return <div className="text-red-500 text-center mt-4">Error: {error}</div>;
     }
 
     return (
-        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {loading ? (
-                Array(12).fill(0).map((_, i) => <Shimmer key={i} />)
-            ) : (
-                videos.map((video) => <VideoCard key={video.id} video={video} />)
-            )}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+            {videos.map((video) => (
+                <VideoCard key={video.id} video={video} />
+            ))}
         </div>
     );
 }

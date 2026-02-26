@@ -12,25 +12,19 @@ export default function SearchFeed() {
         async function fetchSearchResults() {
             setLoading(true);
             try {
-                const apiKey = import.meta.env.VITE_YOUTUBE_API_KEY || import.meta.env.VITE_RAPID_API_KEY;
                 const response = await fetch(
-                    `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${searchTerm}&maxResults=12&type=video&key=${apiKey}`
+                    `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${searchTerm}&maxResults=12&type=video&key=${import.meta.env.VITE_YOUTUBE_API_KEY}`
                 );
 
                 const data = await response.json();
+                const formattedVideos = data.items.map((item) => ({
+                    id: item.id.videoId,
+                    title: item.snippet.title,
+                    channel: item.snippet.channelTitle,
+                    thumbnail: item.snippet.thumbnails.high.url,
+                }));
 
-                if (data.items) {
-                    const formattedVideos = data.items.map((item) => ({
-                        id: item.id.videoId,
-                        title: item.snippet.title,
-                        channel: item.snippet.channelTitle,
-                        thumbnail: item.snippet.thumbnails.high.url,
-                    }));
-                    setVideos(formattedVideos);
-                } else {
-                    console.error("API Error or No items found:", data);
-                    setVideos([]);
-                }
+                setVideos(formattedVideos);
             } catch (error) {
                 console.error("Search API Error:", error);
             } finally {
